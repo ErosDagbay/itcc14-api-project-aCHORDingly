@@ -40,10 +40,10 @@ Note: **GitHub Profile/name be must your full name or family name for grading**
   - Add OpenAPI documentation with request and response schemas and example chord responses.
   - Begin Chapter 3 (REST API Specifications) of ITCC14 document.
 - **Deliverables:**
-- Running backend with basic /chords endpoints working.
-- Updated api_documentation.yaml with examples.
-- Updated GitHub repository (with README linking to documentation).
-- Draft version of Chapter 3 for ITCC14 document.
+  - Running backend with basic /chords endpoints working.
+  - Updated api_documentation.yaml with examples.
+  - Updated GitHub repository (with README linking to documentation).
+  - Draft version of Chapter 3 for ITCC14 document.
 - **Checklist:**
   - [ ] Repo created and initial commit
   - [ ] Dependencies installed 
