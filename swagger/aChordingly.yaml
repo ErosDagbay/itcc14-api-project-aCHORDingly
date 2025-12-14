@@ -1,0 +1,358 @@
+swagger: "2.0"
+info:
+  title: aCHORDingly API
+  description: API for storing, retrieving, and generating chords and songs with chord diagrams.
+  version: 1.1.0
+  contact:
+    name: aCHORDingly API Support
+    url: https://www.chorddiagrams.com/support
+    email: support@chorddiagrams.com
+
+host: localhost:5000
+basePath: /
+schemes:
+  - http
+  - https
+
+tags:
+  - name: Chords
+    description: Operations related to chords and chord diagrams.
+  - name: Analytics
+    description: Operations related to usage analytics.
+  - name: Songs
+    description: Operations for songs with chords.
+
+paths:
+
+  /chords:
+    get:
+      tags: [Chords]
+      summary: Get all chords
+      description: Returns every chord stored in the database, including the png placeholder field.
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Array of chord objects
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Chord"
+        500:
+          description: Server error
+
+    post:
+      tags: [Chords]
+      summary: Add a new chord
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [chord, instrument]
+            properties:
+              chord:
+                type: string
+              instrument:
+                type: string
+                enum: [guitar, piano, ukulele]
+              tuning:
+                type: string
+                enum: [standard, dropD, DADGAD]
+              variants:
+                type: array
+                items:
+                  type: string
+              png:
+                type: string
+      responses:
+        201:
+          description: Chord added successfully.
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+        400:
+          description: Bad request - missing required fields
+        500:
+          description: Server error
+
+  /chords/{instrument}:
+    get:
+      tags: [Chords]
+      summary: Retrieve chords for a given instrument
+      produces:
+        - application/json
+      parameters:
+        - name: instrument
+          in: path
+          required: true
+          type: string
+          enum: [guitar, piano, ukulele]
+      responses:
+        200:
+          description: List of chords for the instrument
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Chord"
+        404:
+          description: No chords found for this instrument
+        500:
+          description: Server error
+
+  /chords/{chord_name}/variants:
+    get:
+      tags: [Chords]
+      summary: Retrieve variants for a chord
+      produces:
+        - application/json
+      parameters:
+        - name: chord_name
+          in: path
+          required: true
+          type: string
+        - name: instrument
+          in: query
+          required: false
+          type: string
+          enum: [guitar, piano, ukulele]
+          default: guitar
+        - name: tuning
+          in: query
+          required: false
+          type: string
+          enum: [standard, dropD, DADGAD]
+          default: standard
+      responses:
+        200:
+          description: Variants found for the chord
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Chord"  # <- now includes png for each variant
+        404:
+          description: No variants found
+        500:
+          description: Server error
+
+  /chords/generate-from-lyrics:
+    post:
+      tags: [Chords]
+      summary: Extract chords from lyrics
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [lyrics_with_chords]
+            properties:
+              lyrics_with_chords:
+                type: string
+              instrument:
+                type: string
+                enum: [guitar, piano, ukulele]
+                default: guitar
+              tuning:
+                type: string
+                enum: [standard, dropD, DADGAD]
+                default: standard
+      responses:
+        200:
+          description: List of unique chords extracted
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Chord"  # <- includes png for extracted chords
+        400:
+          description: Missing lyrics_with_chords field
+
+  /songs:
+    post:
+      tags: [Songs]
+      summary: Add a new song
+      consumes:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            required: [title, lyrics_with_chords]
+            properties:
+              title:
+                type: string
+              lyrics_with_chords:
+                type: string
+      responses:
+        201:
+          description: Song added successfully
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              song:
+                $ref: "#/definitions/Song"
+        400:
+          description: Missing required fields
+        409:
+          description: Song already exists
+        500:
+          description: Server error
+
+    get:
+      tags: [Songs]
+      summary: List all available songs (titles only)
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Array of song titles
+          schema:
+            type: object
+            properties:
+              songs:
+                type: array
+                items:
+                  type: string
+        500:
+          description: Server error
+
+  /songs/{song_title}:
+    get:
+      tags: [Songs]
+      summary: Get a specific song by title
+      produces:
+        - application/json
+      parameters:
+        - name: song_title
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Song object
+          schema:
+            $ref: "#/definitions/Song"
+        404:
+          description: Song not found
+        500:
+          description: Server error
+
+    put:
+      tags: [Songs]
+      summary: Update a song's title or lyrics
+      consumes:
+        - application/json
+      parameters:
+        - name: song_title
+          in: path
+          required: true
+          type: string
+        - in: body
+          name: body
+          required: true
+          schema:
+            type: object
+            properties:
+              title:
+                type: string
+              lyrics_with_chords:
+                type: string
+      responses:
+        200:
+          description: Song updated
+        404:
+          description: Song not found
+        500:
+          description: Server error
+
+    delete:
+      tags: [Songs]
+      summary: Delete a song by title
+      parameters:
+        - name: song_title
+          in: path
+          required: true
+          type: string
+      responses:
+        200:
+          description: Song deleted
+        404:
+          description: Song not found
+        500:
+          description: Server error
+
+  /analytics/chord-usage:
+    get:
+      tags: [Analytics]
+      summary: Retrieve chord usage analytics
+      produces:
+        - application/json
+      responses:
+        200:
+          description: Analytics data
+          schema:
+            $ref: "#/definitions/Analytics"
+        500:
+          description: Server error
+
+definitions:
+
+  Chord:
+    type: object
+    properties:
+      chord:
+        type: string
+      instrument:
+        type: string
+      tuning:
+        type: string
+      variants:
+        type: array
+        items:
+          type: string
+      png:
+        type: string
+        description: URL placeholder for the chord diagram PNG
+
+  Song:
+    type: object
+    properties:
+      title:
+        type: string
+      lyrics_with_chords:
+        type: string
+
+  Analytics:
+    type: object
+    properties:
+      top_chords:
+        type: array
+        items:
+          type: object
+          properties:
+            chord:
+              type: string
+            count:
+              type: integer
+      top_instruments:
+        type: array
+        items:
+          type: object
+          properties:
+            instrument:
+              type: string
+            count:
+              type: integer
+
+security: []
