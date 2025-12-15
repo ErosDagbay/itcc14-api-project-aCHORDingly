@@ -117,7 +117,69 @@ def get_chord_variants(chord_name):
     return jsonify({"chord": params["chord"], **params, "variants": chord_info["variants"]}), 200
 
 
+# Analytics tracking
+USAGE_ANALYTICS = {"top_chords": {}, "top_instruments": {}}
 
+def log_usage(chord_name, instrument):
+    USAGE_ANALYTICS["top_chords"][chord_name] = USAGE_ANALYTICS["top_chords"].get(chord_name, 0) + 1
+    USAGE_ANALYTICS["top_instruments"][instrument] = USAGE_ANALYTICS["top_instruments"].get(instrument, 0) + 1
+
+@app.route('/analytics/chord-usage', methods=['GET'])
+def get_chord_analytics():
+    response = {
+        "top_chords": [{"chord": k, "count": v} for k, v in sorted(USAGE_ANALYTICS["top_chords"].items(), key=lambda x: x[1], reverse=True)],
+        "top_instruments": [{"instrument": k, "count": v} for k, v in sorted(USAGE_ANALYTICS["top_instruments"].items(), key=lambda x: x[1], reverse=True)]
+    }
+    return jsonify(response)
+
+# Extract chords from lyrics
+def extract_chords(lyrics):
+    return list(set(re.findall(r'\[([^\]]+)\]', lyrics)))
+
+@app.route('/chords/generate-from-lyrics', methods=['POST'])
+def generate_chords():
+    data = request.get_json()
+
+    if not data or "lyrics_with_chords" not in data:
+        return jsonify({"error": "'lyrics_with_chords' is required"}), 400
+
+    instrument = data.get("instrument", "guitar")
+    tuning = data.get("tuning", "standard")
+
+    if instrument not in VALID_INSTRUMENTS or tuning not in VALID_TUNINGS:
+        return jsonify({"error": "Invalid instrument or tuning"}), 400
+
+    chords = extract_chords(data["lyrics_with_chords"])
+    response = {"instrument": instrument, "tuning": tuning, "chords": chords}
+    return jsonify(response), 200
+
+# Add songs
+@app.route('/songs', methods=['POST'])
+def add_song():
+    try:
+        data = request.get_json()
+
+        if not data or "title" not in data or "lyrics_with_chords" not in data:
+            return jsonify({"error": "Provide 'title' and 'lyrics_with_chords'"}), 400
+        
+        # Prevent duplicate song titles
+        if songs_db.find_one({"title": data["title"]}):
+            return jsonify({"error": "Song with this title already exists"}), 409
+        
+        # Insert into the database
+        songs_db.insert_one(data)
+        
+        return jsonify({
+            "message": "Song added successfully!",
+            "song": {
+                "title": data["title"],
+                "lyrics_with_chords": data["lyrics_with_chords"]
+            }
+        }), 201
+
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
