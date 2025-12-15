@@ -181,6 +181,60 @@ def add_song():
         print(f"Error occurred: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
+# Get all available songs
+@app.route('/songs', methods=['GET'])
+def list_songs():
+    songs = list(songs_db.find({}, {"_id": 0, "title": 1}))
+    return jsonify({"songs": [song["title"] for song in songs]}), 200
+
+# Update Lyrics in the songs
+@app.route('/songs/<song_title>', methods=['PUT'])
+def update_song(song_title):
+    try:
+        data = request.get_json()
+        
+        if not data or "lyrics_with_chords" not in data and "title" not in data:
+            return jsonify({"error": "Provide 'lyrics_with_chords' or 'title' to update"}), 400
+        
+        song = songs_db.find_one({"title": song_title})
+        if not song:
+            return jsonify({"error": "Song not found"}), 404
+        
+        update_fields = {}
+        if "lyrics_with_chords" in data:
+            update_fields["lyrics_with_chords"] = data["lyrics_with_chords"]
+        if "title" in data:
+            update_fields["title"] = data["title"]
+        
+        result = songs_db.update_one({"title": song_title}, {"$set": update_fields})
+        if result.modified_count:
+            return jsonify({"message": "Song updated successfully!"}), 200
+        return jsonify({"message": "No changes made to the song"}), 200
+
+    except Exception as e:
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
+# Delete Songs
+@app.route('/songs/<song_title>', methods=['DELETE'])
+def delete_song(song_title):
+    try:
+        result = songs_db.delete_one({"title": song_title})
+        
+        if result.deleted_count:
+            return jsonify({"message": "Song deleted successfully!"}), 200
+        return jsonify({"error": "Song not found"}), 404
+
+    except Exception as e:
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
+# get a specific songs
+@app.route('/songs/<song_title>', methods=['GET'])
+def get_song(song_title):
+    song = songs_db.find_one({"title": song_title}, {"_id": 0})
+    if not song:
+        return jsonify({"error": "Song not found"}), 404
+    return jsonify(song), 200
+    
 if __name__ == '__main__':
     app.run(debug=True)
 
