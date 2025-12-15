@@ -115,3 +115,11 @@ def get_chord_variants(chord_name):
     log_usage(params["chord"], params["instrument"])
 
     return jsonify({"chord": params["chord"], **params, "variants": chord_info["variants"]}), 200
+
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+    
